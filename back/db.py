@@ -1,4 +1,12 @@
 import sqlite3
+import base64
+from config import *
+import hashlib
+
+def hash_password(password):
+    sha256 = hashlib.sha256()
+    sha256.update(password.encode('utf-8') + PASSWORD_SALT.encode('utf-8'))
+    return sha256.hexdigest()
 
 def start_db():
     con = sqlite3.connect('db.db')
@@ -12,7 +20,7 @@ def make_table():
     con.commit()
     con.close()
     
-def add_user(id, nickname, money, password, admin, email=None):
+def add_user(id, nickname, password, admin=0, email=None, money=0):
     con, cur = start_db()
     cur.execute('INSERT INTO user (id, email, nickname, money, password, admin) VALUES (?, ?, ?, ?, ?, ?)', (id, email, nickname, money, password, admin))
     con.commit()

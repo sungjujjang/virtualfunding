@@ -90,10 +90,6 @@ async def get_ip(request: Request):
     client_ip = request.client.host
     return {"ip": client_ip}
 
-@app.get(f"{v1api}/login")
-async def login(request: Request):
-    return create_jwt("admin", 1)
-
 class StockGet(BaseModel):
     page: int = None
     numofrows: int = None
@@ -174,6 +170,43 @@ async def buy_stock(request: StockBuy):
                 return {"message": "DBError"}
             else:
                 return {"message": "Success"}
+            
+class StockSell(BaseModel):
+    jwt: str
+    stock_name: str
+    stock_count: int
+    
+@app.post(f"{v1api}/sell_stock")
+async def sell_stock(request: StockSell):
+    check_jwts = check_jwt(request.jwt)
+    if check_jwts != True:
+        return {"message": check_jwts}
+    else:
+        check_jwts = decode_jwt(request.jwt)
+        userid = check_jwts["userid"]
+        check_stock_userone = check_stock_user(userid, request.stock_name)
+        check_stock_zero(userid)
+        if check_stock_userone == False:
+            return {"message": "InvalidStock"}
+        stock_name = request.stock_name
+        stock_count = request.stock_count
+        if check_stock_userone[2] < stock_count:
+            return {"message": "NotEnoughStock"}
+        stock_mon = check_stock(request.stock_name)[0]["realtime"]
+        if stock_mon == False:
+            return {"message": "InvalidStock"}
+        stockmoney = stock_count * int(stock_mon)
+        if check_stock_userone == ERM:
+            return {"message": "DBError"}
+        addmoney = add_money(userid, stockmoney)
+        if addmoney == ERM:
+            return {"message": "DBError"}
+        adstock = add_stock(userid, stock_name, -stock_count)
+        if adstock == ERM:
+            return {"message": "DBError"}
+        else:
+            check_stock_zero(userid)
+            return {"message": "Success"}
 
 class Search(BaseModel):
     jwt: str
@@ -191,6 +224,73 @@ async def searchstock(request: Search):
         return {"stocks": stocks}
     except:
         return {"message": "APIError"}
+    
+class Register(BaseModel):
+    id: str
+    password: str
+    name: str
+    email: str = None
+
+@app.post(f"{v1api}/register")
+async def register(request: Register):
+    id = request.id
+    password = request.password
+    name = request.name
+    email = request.email
+    check_userstr = check_id_string(id)
+    check_passwordstr = check_password_string(password)
+    if check_userstr == False:
+        return {"message": "아이디는 4자 이상 20자 이하의 영문자, 숫자, _ 만 가능합니다."}
+    if check_passwordstr == False:
+        return {"message": "비밀번호는 8자 이상 20자 이하의 영문자, 숫자, 특수문자만 가능합니다."}
+    user = check_user(id)
+    if user == ERM:
+        return {"message": "DBError"}
+    if user == True:
+        return {"message": "AlreadyExists"}
+    password = hash_password(password)
+    adduser = add_user(id, name, password, email=email)
+    if adduser == ERM:
+        return {"message": "DBError"}
+    else:
+        jwt = create_jwt(id, 1)
+        return {"message": "Success", "jwt": jwt}
+    
+class Login(BaseModel):
+    id: str
+    password: str
+    login_days: int = 1
+
+@app.post(f"{v1api}/login")
+async def login(request: Login):
+    id = request.id
+    password = request.password
+    login_days = request.login_days
+    user = check_user(id)
+    if user == ERM:
+        return {"message": "DBError"}
+    if user == False:
+        return {"message": "InvalidUser"}
+    checkpass = check_password(id, password)
+    if checkpass == ERM:
+        return {"message": "DBError"}
+    if checkpass == False:
+        return {"message": "InvalidPassword"}
+    jwt = create_jwt(id, login_days)
+    return {"message": "Success", "jwt": jwt}
+
+class Checkid(BaseModel):
+    id: str
+    
+@app.post(f"{v1api}/check_id")
+async def checkid(request: Checkid):
+    checkuser = check_user(request.id)
+    if checkuser == ERM:
+        return {"message": "DBError"}
+    if checkuser == True:
+        return {"message": "AlreadyExists"}
+    else:
+        return {"message": "Available"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=1010)

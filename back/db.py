@@ -2,6 +2,11 @@ import sqlite3
 import base64
 from config import *
 import hashlib
+import string
+
+SPECIAL_CHARACTERS = string.punctuation
+ENGLISH = string.ascii_letters
+NUMBERS = string.digits
 
 def hash_password(password):
     sha256 = hashlib.sha256()
@@ -31,6 +36,38 @@ def add_user(id, nickname, password, admin=0, email=None, money=0):
         con.commit()
         con.close()
         return True
+    except:
+        return "error"
+
+def check_id_string(id):
+    # 아이디는 4자 이상 20자 이하의 영문자, 숫자, _ 만 가능
+    if len(id) < 4 or len(id) > 20:
+        return False
+    for c in id:
+        if not c.isalnum() and c != '_':
+            return False
+    return True
+
+def check_password_string(password):
+    # 비밀번호는 8자 이상 20자 이하의 영문자, 숫자, 특수문자만 가능
+    if len(password) < 8 or len(password) > 20:
+        return False
+    for c in password:
+        if c not in SPECIAL_CHARACTERS and c not in ENGLISH and c not in NUMBERS:
+            return False
+    return True
+
+def check_password(id, password):
+    try:
+        con, cur = start_db()
+        cur.execute('SELECT password FROM user WHERE id=?', (id,))
+        user_password = cur.fetchone()[0]
+        con.close()
+        password = hash_password(password)
+        if user_password == password:
+            return True
+        else:
+            return False
     except:
         return "error"
     
@@ -103,6 +140,29 @@ def check_money(id, money):
             return False
         else:
             return True
+    except:
+        return "error"
+    
+def check_stock_zero(id):
+    try:
+        con, cur = start_db()
+        
+        cur.execute('DELETE FROM stocks WHERE id=? AND stock_count<=0', (id,))
+        con.commit()
+        con.close()
+        return True
+    except:
+        return "error"
+
+def check_stock_user(id, stock_name):
+    try:
+        con, cur = start_db()
+        cur.execute('SELECT * FROM stocks WHERE id=? AND stock_name=?', (id, stock_name))
+        stock = cur.fetchone()
+        if stock:
+            return stock
+        else:
+            return False
     except:
         return "error"
 

@@ -18,6 +18,46 @@ def start_db():
     cur = con.cursor()
     return con, cur
 
+def delete_user(id):
+    try:
+        con, cur = start_db()
+        cur.execute('DELETE FROM user WHERE id=?', (id,))
+        con.commit()
+        con.close()
+        return True
+    except:
+        return "error"
+    
+def change_passwords(id, password):
+    try:
+        con, cur = start_db()
+        cur.execute('UPDATE user SET password=? WHERE id=?', (password, id))
+        con.commit()
+        con.close()
+        return True
+    except:
+        return "error"
+    
+def change_emails(id, email):
+    try:
+        con, cur = start_db()
+        cur.execute('UPDATE user SET email=? WHERE id=?', (email, id))
+        con.commit()
+        con.close()
+        return True
+    except:
+        return "error"
+    
+def change_nicknames(id, nickname):
+    try:
+        con, cur = start_db()
+        cur.execute('UPDATE user SET nickname=? WHERE id=?', (nickname, id))
+        con.commit()
+        con.close()
+        return True
+    except:
+        return "error"
+
 def make_table():
     try:
         con, cur = start_db()

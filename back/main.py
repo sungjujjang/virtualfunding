@@ -56,6 +56,20 @@ def check_stock(stock_name):
         stock_json[0]["realtime"] = get_stock_price(stock_json[0]["srtnCd"])
         return stock_json
 
+def check_stock_7(stock_name):
+    params = {
+        "serviceKey": STOCKAPI_KEY,
+        "numOfRows": 7,
+        "resultType": "json",
+        "itmsNm": stock_name
+    }
+    stock_requests = requests.get(url, params=params)
+    stock_json = stock_requests.json()["response"]["body"]["items"]["item"]
+    if len(stock_json) == 0:
+        return False
+    else:
+        return stock_json
+
 def create_jwt(userid, days):
     data = {
         "userid": userid,
@@ -291,6 +305,119 @@ async def checkid(request: Checkid):
         return {"message": "AlreadyExists"}
     else:
         return {"message": "Available"}
+    
+class Get7days(BaseModel):
+    jwt: str
+    stock_name: str
+    
+@app.post(f"{v1api}/get_7days")
+async def get7days(request: Get7days):
+    checkjwt = check_jwt(request.jwt)
+    if checkjwt != True:
+        return {"message": checkjwt}
+    stock_name = request.stock_name
+    stocks = check_stock_7(stock_name)
+    if stocks == False:
+        return {"message": "InvalidStock"}
+    return stocks
+
+class DeleteUser(BaseModel):
+    jwt: str
+    password: str
+
+@app.delete(f"{v1api}/delete_user")
+async def delete_user_(request: DeleteUser):
+    checkjwt = check_jwt(request.jwt)
+    if checkjwt != True:
+        return {"message": checkjwt}
+    checkjwt = decode_jwt(request.jwt)
+    userid = checkjwt["userid"]
+    checkpass = check_password(userid, request.password)
+    if checkpass == ERM:
+        return {"message": "DBError"}
+    if checkpass == False:
+        return {"message": "InvalidPassword"}
+    deluser = delete_user(userid)
+    if deluser == ERM:
+        return {"message": "DBError"}
+    return {"message": "Success"}
+
+class ChangePassword(BaseModel):
+    jwt: str
+    password: str
+    new_password: str
+
+@app.put(f"{v1api}/change_password")
+async def change_password(request: ChangePassword):
+    checkjwt = check_jwt(request.jwt)
+    if checkjwt != True:
+        return {"message": checkjwt}
+    checkjwt = decode_jwt(request.jwt)
+    userid = checkjwt["userid"]
+    checkpass = check_password(userid, request.password)
+    if checkpass == ERM:
+        return {"message": "DBError"}
+    if checkpass == False:
+        return {"message": "InvalidPassword"}
+    new_password = request.new_password
+    check_passwordstr = check_password_string(new_password)
+    if check_passwordstr == False:
+        return {"message": "비밀번호는 8자 이상 20자 이하의 영문자, 숫자, 특수문자만 가능합니다."}
+    new_password = hash_password(new_password)
+    changepass = change_passwords(userid, new_password)
+    if changepass == ERM:
+        return {"message": "DBError"}
+    return {"message": "Success"}
+
+class ChangeEmail(BaseModel):
+    jwt: str
+    email: str
+
+@app.put(f"{v1api}/change_email")
+async def change_email(request: ChangeEmail):
+    checkjwt = check_jwt(request.jwt)
+    if checkjwt != True:
+        return {"message": checkjwt}
+    checkjwt = decode_jwt(request.jwt)
+    userid = checkjwt["userid"]
+    changeemail = change_emails(userid, request.email)
+    if changeemail == ERM:
+        return {"message": "DBError"}
+    return {"message": "Success"}
+
+class Changenickname(BaseModel):
+    jwt: str
+    nickname: str
+
+@app.put(f"{v1api}/change_nickname")
+async def change_nickname(request: Changenickname):
+    checkjwt = check_jwt(request.jwt)
+    if checkjwt != True:
+        return {"message": checkjwt}
+    checkjwt = decode_jwt(request.jwt)
+    userid = checkjwt["userid"]
+    changenickname = change_nicknames(userid, request.nickname)
+    if changenickname == ERM:
+        return {"message": "DBError"}
+    return {"message": "Success"}
+
+class Getuser(BaseModel):
+    jwt: str
+    
+@app.get(f"{v1api}/get_user")
+async def get_user_(request: Getuser):
+    checkjwt = check_jwt(request.jwt)
+    if checkjwt != True:
+        return {"message": checkjwt}
+    checkjwt = decode_jwt(request.jwt)
+    userid = checkjwt["userid"]
+    user = get_user(userid)
+    if user == ERM:
+        return {"message": "DBError"}
+    listuser = list(user)
+    del listuser[4]
+    del listuser[4]
+    return {"message": "Success", "user": listuser}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=1010)

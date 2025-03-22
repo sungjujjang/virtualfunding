@@ -6,11 +6,21 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from config import STOCKAPI_KEY, SECRET_KEY, ALGORITHM
 from bs4 import BeautifulSoup
+# add cors
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 url = "http://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo"
 v1api = "/api/v1"
 ERM = "error"
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 모든 도메인에서의 요청 허용
+    allow_credentials=True,
+    allow_methods=["*"],  # 모든 HTTP 메서드 허용
+    allow_headers=["*"],  # 모든 헤더 허용
+)
 
 def get_stock_price(stock_code):
     url = f"https://finance.naver.com/item/main.nhn?code={stock_code}"
@@ -228,7 +238,7 @@ class Search(BaseModel):
     page: int = None
     numofrows: int = None
 
-@app.get(f"{v1api}/search_stock")
+@app.post(f"{v1api}/search_stock")
 async def searchstock(request: Search):
     try:
         chjwt = check_jwt(request.jwt)
@@ -404,7 +414,7 @@ async def change_nickname(request: Changenickname):
 class Getuser(BaseModel):
     jwt: str
     
-@app.get(f"{v1api}/get_user")
+@app.post(f"{v1api}/get_user")
 async def get_user_(request: Getuser):
     checkjwt = check_jwt(request.jwt)
     if checkjwt != True:
